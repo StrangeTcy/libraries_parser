@@ -59,12 +59,8 @@ def get_modules(libr_name):
         our_modules = pickle.load(f)
     return our_modules
 
-#get_modules("torch")    
-
-
 
 def get_category(libr_name):
-    
     urllib.request.urlretrieve("https://raw.githubusercontent.com/ivolution-ai/librarian/main/libs/python.json", "python.json")
     # requests.get("https://raw.githubusercontent.com/ivolution-ai/librarian/main/libs/python.json")
     with open("python.json", "r") as f:
@@ -73,23 +69,76 @@ def get_category(libr_name):
         if keyval["id"].lower() == f"py.{libr_name.lower()}":
             return keyval["tech"]
 
+
 def get_releases(libr_name):
     def helper(commit_string):
         findings = commit_string.find("a",{'href':True})['data-hovercard-url']
         if 'commit' in findings:
             return findings.split('/')[4] 
 
-    releases_url = "https://github.com/pytorch/pytorch/releases"
-    releases_page = requests.get(releases_url)
-    releases_soup = BeautifulSoup(releases_page.content, "html.parser")
-    releases_list = releases_soup.find_all("div", {"class":"mr-3 mr-md-0 d-flex"})
-    commits_list = releases_soup.find_all("div", {"class":"mb-md-2 mr-3 mr-md-0"})
-    releases_list_final = [r.find("span", {"class":"ml-1 wb-break-all"}).text.strip("\n      ") for r in releases_list]
-    commits_list_final = [helper(c) for c in commits_list]
-    commits_list_final = list(filter(None, commits_list_final))
-    print (f"We have releases {releases_list_final} of len {len(releases_list_final)} and commits {commits_list_final} of len {len(commits_list_final)}")
-    magic_release_commit_dict = dict(zip(releases_list_final, commits_list_final))
-    return magic_release_commit_dict
+    releases_list_final = []
+    commits_list_final = []
+    release_dates_filtered = []        
+    for p in range(10):
+        if p == 0 or p == 1:
+            releases_url = "https://github.com/pytorch/pytorch/releases"
+        else:
+            releases_url = f"https://github.com/pytorch/pytorch/releases?page={p}"    
+        releases_page = requests.get(releases_url)
+        releases_soup = BeautifulSoup(releases_page.content, "html.parser")
+        releases_text = releases_soup.findAll(text=True)
+        if "There aren’t any releases here" in releases_text:
+            print ("We've run out of pages")
+        else:
+            release_dates = releases_soup.find_all("div", {"class":"mb-2 f4 mr-3 mr-md-0 col-12"})
+            release_dates_filtered_ = [d.find('local-time')['datetime'] for d in release_dates]
+            print (f"Our release dates are: {release_dates_filtered} of len {len(release_dates_filtered)}")
+            releases_list = releases_soup.find_all("div", {"class":"mr-3 mr-md-0 d-flex"})
+            commits_list = releases_soup.find_all("div", {"class":"mb-md-2 mr-3 mr-md-0"})
+            releases_list_final_ = [r.find("span", {"class":"ml-1 wb-break-all"}).text.strip("\n      ") for r in releases_list]
+            commits_list_final_ = [helper(c) for c in commits_list]
+            commits_list_final_ = list(filter(None, commits_list_final_))
+            print (f"We have releases {releases_list_final} of len {len(releases_list_final)} and commits {commits_list_final} of len {len(commits_list_final)}")
+            release_dates_filtered.extend(release_dates_filtered_)
+            releases_list_final.extend(releases_list_final_)
+            commits_list_final.extend(commits_list_final_)
+
+    magic_release_commit_dates = (zip(releases_list_final, commits_list_final, release_dates_filtered))
+    return magic_release_commit_dates
+
+
+def get_dependencies(libr_name, version):
+    package_json = requests.get(f'https://pypi.org/pypi/{libr_name}/{version}/json', verify = False).json()
+    return package_json['info']['requires_dist']
+
+
+def  get_dependents(libr_name):
+    dependents_url = f"https://libraries.io/pypi/{libr_name}/dependents"
+    dependents_page = requests.get(dependents_url)
+    dependents_soup = BeautifulSoup(dependents_page.content, "html.parser")
+    dependents_list = dependents_soup.find_all("div", {"class":"project"})
+    dependents_list_final = [d.find("a").text for d in dependents_list]   
+    print (f"Library {libr_name} is being depended on by these libraries: {dependents_list_final}")
+    # input ("Are we cool yet?")
+    return dependents_list_final
+
+
+def form_releases(commit_list, libr_name):
+    versions__list = []
+    for c in commit_list:
+        
+        version_dict = \
+        {
+        "version": c[0],
+        "commit":c[1],
+        "date":c[2],
+        "methods": get_modules(libr_name)
+        }
+        versions__list.append(version_dict)
+    return versions__list    
+    
+
+
 
 def get_libraries_attrs(libr_name):
     basic_url = "https://pypi.org/"
@@ -122,16 +171,16 @@ def get_libraries_attrs(libr_name):
     print (f"This project has {stars} github stars")
     weekly_downloads = get_weekly_downloads(libr_name, libr_version)
     # libr_popularity = "Quite popular"
-    libr_dependencies = "typing-extensions" #TODO
-    libr_dependents = "torchvision" #TODO
-    libr_methods = get_modules(libr_name)
+    
+    libr_dependencies = get_dependencies(libr_name, libr_version)
+    libr_dependents = get_dependents(libr_name)
+    
+     
     libr_tech = "blablabla"
     libr_category = get_category(libr_name) #???
     libr_status = "not ready yet"
-    rel_com_dict = get_releases(libr_name)
-    version_commit = "blablabla"
-    version_date = "blablabla"
-
+    rel_com_dates = get_releases(libr_name)
+        
 
     attrs_dict = {"language": "Python",
                   "name": libr_name,
@@ -145,12 +194,7 @@ def get_libraries_attrs(libr_name):
                   "githubWatch": watch, 
                   "weeklyDownloads":weekly_downloads,
                   "releases":[
-                              {
-                                "version": libr_version,
-                                "commit":version_commit,
-                                "date":version_date,
-                                "methods": libr_methods
-                               }
+                              form_releases(rel_com_dates, libr_name)
                   ],
                   "dependencies": libr_dependencies,
                   "dependents": libr_dependents,
@@ -163,6 +207,8 @@ def get_libraries_attrs(libr_name):
                   }
     attrs_json = json.dumps(attrs_dict, indent=4)
     print (f"Our library has these attributes: {attrs_json}")
+    with open(f"{libr_name}_everything.json", "w") as f:
+        f.write(attrs_json)
 
 
 
