@@ -70,7 +70,7 @@ def get_category(libr_name):
             return keyval["tech"]
 
 
-def get_releases(libr_name):
+def get_releases(libr_name, github_url):
     def helper(commit_string):
         findings = commit_string.find("a",{'href':True})['data-hovercard-url']
         if 'commit' in findings:
@@ -81,9 +81,9 @@ def get_releases(libr_name):
     release_dates_filtered = []        
     for p in range(10):
         if p == 0 or p == 1:
-            releases_url = "https://github.com/pytorch/pytorch/releases"
+            releases_url = f"{github_url}/releases"
         else:
-            releases_url = f"https://github.com/pytorch/pytorch/releases?page={p}"    
+            releases_url = f"{github_url}/releases?page={p}"    
         releases_page = requests.get(releases_url)
         releases_soup = BeautifulSoup(releases_page.content, "html.parser")
         releases_text = releases_soup.findAll(text=True)
@@ -171,7 +171,9 @@ def get_libraries_attrs(libr_name):
     print (f"This project has {stars} github stars")
     weekly_downloads = get_weekly_downloads(libr_name, libr_version)
     # libr_popularity = "Quite popular"
-    
+    plain_github_url = github_data['html_url']
+
+
     libr_dependencies = get_dependencies(libr_name, libr_version)
     libr_dependents = get_dependents(libr_name)
     
@@ -179,7 +181,7 @@ def get_libraries_attrs(libr_name):
     libr_tech = "blablabla"
     libr_category = get_category(libr_name) #???
     libr_status = "not ready yet"
-    rel_com_dates = get_releases(libr_name)
+    rel_com_dates = get_releases(libr_name, plain_github_url)
         
 
     attrs_dict = {"language": "Python",
