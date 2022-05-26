@@ -44,7 +44,7 @@ def get_weekly_downloads(libr_name, version):
 
 def install(libr_name, version):
     print ("Cleaning up any existing versions of this library...")
-    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", libr_name])
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "--yes", libr_name])
     print (f"Installig library {libr_name} ver. {version} ...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", f"{libr_name}=={version}"])
 
