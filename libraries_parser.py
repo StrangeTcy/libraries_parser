@@ -1,3 +1,4 @@
+from ensurepip import version
 from typing import OrderedDict
 from bs4 import BeautifulSoup
 import urllib.request
@@ -8,6 +9,10 @@ from collections import OrderedDict
 
 import pkgutil
 import pickle
+
+import subprocess
+import sys
+
 
 from google.cloud import bigquery
 
@@ -38,6 +43,17 @@ def get_weekly_downloads(libr_name, version):
 
 
 
+
+def install(libr_name, version):
+    print ("Cleaning up any existing versions of this library...")
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", libr_name])
+    print (f"Installig library {libr_name} ver. {version} ...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", f"{libr_name}=={version}"])
+
+
+
+
+
 our_magic_function = \
 """
 import pickle
@@ -53,7 +69,8 @@ with open("{}_modules.pkl", "wb") as f:
     pickle.dump(modules_list, f)
 """  
 
-def get_modules(libr_name):
+def get_modules(libr_name, version):
+    install(libr_name, version)
     exec(our_magic_function.format(libr_name, libr_name, libr_name, libr_name))
     with open(f"{libr_name}_modules.pkl", "rb") as f:
         our_modules = pickle.load(f)
@@ -76,6 +93,13 @@ def get_releases(libr_name, github_url):
         if 'commit' in findings:
             return findings.split('/')[4] 
 
+    def datetime_helper(d):
+        result =  d.find('local-time')
+        if not result == None:
+            return result['datetime']
+        else:
+            return d.find('relative-time')['datetime']     
+
     releases_list_final = []
     commits_list_final = []
     release_dates_filtered = []        
@@ -91,7 +115,7 @@ def get_releases(libr_name, github_url):
             print ("We've run out of pages")
         else:
             release_dates = releases_soup.find_all("div", {"class":"mb-2 f4 mr-3 mr-md-0 col-12"})
-            release_dates_filtered_ = [d.find('local-time')['datetime'] for d in release_dates]
+            release_dates_filtered_ = [datetime_helper(d) for d in release_dates]
             print (f"Our release dates are: {release_dates_filtered} of len {len(release_dates_filtered)}")
             releases_list = releases_soup.find_all("div", {"class":"mr-3 mr-md-0 d-flex"})
             commits_list = releases_soup.find_all("div", {"class":"mb-md-2 mr-3 mr-md-0"})
@@ -120,7 +144,10 @@ def  get_dependents(libr_name):
     dependents_list_final = [d.find("a").text for d in dependents_list]   
     print (f"Library {libr_name} is being depended on by these libraries: {dependents_list_final}")
     # input ("Are we cool yet?")
-    return dependents_list_final
+    if not dependents_list_final == []:
+        return dependents_list_final
+    else:
+        return ["!!This needs further work"]
 
 
 def form_releases(commit_list, libr_name):
@@ -132,7 +159,7 @@ def form_releases(commit_list, libr_name):
         "version": c[0],
         "commit":c[1],
         "date":c[2],
-        "methods": get_modules(libr_name)
+        "methods": get_modules(libr_name, c[0])
         }
         versions__list.append(version_dict)
     return versions__list    
@@ -215,4 +242,4 @@ def get_libraries_attrs(libr_name):
 
 
 if __name__ == "__main__":
-    get_libraries_attrs("torch")    
+    get_libraries_attrs("tensorflow")    
