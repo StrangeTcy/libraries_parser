@@ -175,11 +175,19 @@ def form_releases(commit_list, libr_name):
 
 
 def get_libraries_attrs(libr_name):
-    start_time = time.time()
+    def write_to_log(log_filename, data):
+        with open(log_filename, "w") as f:
+            f.write(data)
+
+    timing_log = f"{libr_name}_timing.log"
+    if TIMING:
+        start_time = time.time()
 
     basic_url = "https://pypi.org/"
     libr_page_url = basic_url+"project/"+libr_name
     print (f"Getting page {libr_page_url}")
+    if TIMING:
+        page_start_time = time.time()
     libr_page = requests.get(libr_page_url)
     print ("Parsing page...")
     libr_page_soup = BeautifulSoup(libr_page.text, "html.parser")
@@ -195,8 +203,8 @@ def get_libraries_attrs(libr_name):
     libr_topics =  libr_page_soup.find_all("a", href = lambda href: href and "/search/?c=Topic+" in href)
     libr_topics_text = [a.text.strip("\n            ") for a in libr_topics]
     print (f"Found topics {libr_topics_text}")
-    github_repo_url = "blablabla" #TODO
-    
+
+
     github_api_url = libr_page_soup.find("div", {"class":"github-repo-info hidden"})['data-url']
     print (f"Our github url is {github_api_url}")
     github_data = json.loads(requests.get(github_api_url).text)
@@ -205,24 +213,37 @@ def get_libraries_attrs(libr_name):
     forks =  github_data["forks_count"]
     watch = github_data["watchers_count"]
     print (f"This project has {stars} github stars")
+    if TIMING:
+        write_to_log(timing_log, f"Parsing repo-related html pages took {time.time() - page_start_time} seconds to process")
+    if TIMING:
+        bigquery_start_time = time.time()
     weekly_downloads = get_weekly_downloads(libr_name, libr_version)
+    if TIMING:
+        write_to_log(timing_log, f"Getting weekly downloads took {time.time() - bigquery_start_time} seconds to process")
     # libr_popularity = "Quite popular"
     plain_github_url = github_data['html_url']
 
-
+    if TIMING:
+        deps_start_time = time.time()
     libr_dependencies = get_dependencies(libr_name, libr_version)
     libr_dependents = get_dependents(libr_name)
+    if TIMING:
+        write_to_log(timing_log, f"Getting dependencies & dependents took {time.time() - deps_start_time} seconds to process")
     
      
     libr_tech = "blablabla"
     libr_category = get_category(libr_name) #???
     libr_status = "not ready yet"
+    if TIMING:
+        releases_start_time = time.time()
     rel_com_dates = get_releases(libr_name, plain_github_url)
+    if TIMING:
+        write_to_log(timing_log, f"Getting all the releases took {time.time() - releases_start_time} seconds to process")
         
 
     attrs_dict = {"language": "Python",
                   "name": libr_name,
-                  "repo": github_repo_url,
+                  "repo": plain_github_url,
                   "imports": [libr_name],
                   "tech": libr_tech,
                   "category": libr_category,
@@ -247,6 +268,8 @@ def get_libraries_attrs(libr_name):
     print (f"Our library has these attributes: {attrs_json}")
     time_it_took = str(datetime.timedelta(second=(time.time() - start_time)))
     print (f"It took us {time_it_took} to collect all that data. Saving...")
+    if TIMING:
+        write_to_log(timing_log, f"It took us {time_it_took} to collect and process all that data.")
     with open(f"{libr_name}_everything.json", "w") as f:
         f.write(attrs_json)
 
