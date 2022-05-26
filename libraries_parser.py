@@ -1,5 +1,3 @@
-from ensurepip import version
-from typing import OrderedDict
 from bs4 import BeautifulSoup
 import urllib.request
 import requests
