@@ -1,3 +1,6 @@
+import faulthandler
+faulthandler.enable()
+
 from bs4 import BeautifulSoup
 import urllib.request
 import requests
@@ -49,11 +52,11 @@ def get_weekly_downloads(libr_name, version):
 
 
 def install(libr_name, version):
-    print ("Cleaning up any existing versions of this library...")
-    subprocess.check_call(["sudo", sys.executable, "-m", "pip", "uninstall", "--yes", libr_name])
+    #print ("Cleaning up any existing versions of this library...")
+    #subprocess.check_call(["sudo", sys.executable, "-m", "pip", "uninstall", "--yes", libr_name])
     print (f"Installig library {libr_name} ver. {version} ...")
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{libr_name}=={version}"])
+        subprocess.check_call(["sudo", sys.executable, "-m", "pip", "install", f"{libr_name}=={version}"])
     except:
         print (f"It seems that something went wrong when trying to install {libr_name} ver. {version}. That's bad...")
 
@@ -176,8 +179,12 @@ def form_releases(commit_list, libr_name):
 
 def get_libraries_attrs(libr_name):
     def write_to_log(log_filename, data):
-        with open(log_filename, "w") as f:
-            f.write(data)
+        with open(log_filename, "a+") as f:
+            f.write(data+"\n")
+    
+    def time_to_str(num_of_seconds):
+        return str(datetime.timedelta(seconds=num_of_seconds))
+
 
     timing_log = f"{libr_name}_timing.log"
     if TIMING:
@@ -214,7 +221,7 @@ def get_libraries_attrs(libr_name):
     watch = github_data["watchers_count"]
     print (f"This project has {stars} github stars")
     if TIMING:
-        write_to_log(timing_log, f"Parsing repo-related html pages took {time.time() - page_start_time} seconds to process")
+        write_to_log(timing_log, f"Parsing repo-related html pages took {time_to_str(time.time() - page_start_time)} seconds to process")
     if TIMING:
         bigquery_start_time = time.time()
     weekly_downloads = get_weekly_downloads(libr_name, libr_version)
@@ -228,7 +235,7 @@ def get_libraries_attrs(libr_name):
     libr_dependencies = get_dependencies(libr_name, libr_version)
     libr_dependents = get_dependents(libr_name)
     if TIMING:
-        write_to_log(timing_log, f"Getting dependencies & dependents took {time.time() - deps_start_time} seconds to process")
+        write_to_log(timing_log, f"Getting dependencies & dependents took {time_to_str(time.time() - deps_start_time)} seconds to process")
     
      
     libr_tech = "blablabla"
@@ -238,7 +245,7 @@ def get_libraries_attrs(libr_name):
         releases_start_time = time.time()
     rel_com_dates = get_releases(libr_name, plain_github_url)
     if TIMING:
-        write_to_log(timing_log, f"Getting all the releases took {time.time() - releases_start_time} seconds to process")
+        write_to_log(timing_log, f"Getting all the releases took {time_to_str(time.time() - releases_start_time)} seconds to process")
         
 
     attrs_dict = {"language": "Python",
@@ -266,7 +273,7 @@ def get_libraries_attrs(libr_name):
                   }
     attrs_json = json.dumps(attrs_dict, indent=4)
     print (f"Our library has these attributes: {attrs_json}")
-    time_it_took = str(datetime.timedelta(second=(time.time() - start_time)))
+    time_it_took = time_to_str(time.time() - start_time)
     print (f"It took us {time_it_took} to collect all that data. Saving...")
     if TIMING:
         write_to_log(timing_log, f"It took us {time_it_took} to collect and process all that data.")
