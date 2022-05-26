@@ -11,8 +11,14 @@ import pickle
 import subprocess
 import sys
 
+import datetime
+import time
 
 from google.cloud import bigquery
+
+
+
+TIMING = True
 
 
 # Note: depending on where this code is being run, you may require
@@ -44,9 +50,12 @@ def get_weekly_downloads(libr_name, version):
 
 def install(libr_name, version):
     print ("Cleaning up any existing versions of this library...")
-    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "--yes", libr_name])
+    subprocess.check_call(["sudo", sys.executable, "-m", "pip", "uninstall", "--yes", libr_name])
     print (f"Installig library {libr_name} ver. {version} ...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", f"{libr_name}=={version}"])
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{libr_name}=={version}"])
+    except:
+        print (f"It seems that something went wrong when trying to install {libr_name} ver. {version}. That's bad...")
 
 
 
@@ -166,13 +175,15 @@ def form_releases(commit_list, libr_name):
 
 
 def get_libraries_attrs(libr_name):
+    start_time = time.time()
+
     basic_url = "https://pypi.org/"
     libr_page_url = basic_url+"project/"+libr_name
     print (f"Getting page {libr_page_url}")
     libr_page = requests.get(libr_page_url)
     print ("Parsing page...")
     libr_page_soup = BeautifulSoup(libr_page.text, "html.parser")
-    print (f"We have got the page for {libr_name}, and it's {libr_page_soup}")
+    #print (f"We have got the page for {libr_name}, and it's {libr_page_soup}")
     
     libr_description = libr_page_soup.find("meta", attrs={'name':'description'})["content"]
     libr_tags = [l.text.strip("\n      ") for l in libr_page_soup.find_all("span", {"class":"package-keyword"})]
@@ -234,10 +245,12 @@ def get_libraries_attrs(libr_name):
                   }
     attrs_json = json.dumps(attrs_dict, indent=4)
     print (f"Our library has these attributes: {attrs_json}")
+    time_it_took = str(datetime.timedelta(second=(time.time() - start_time)))
+    print (f"It took us {time_it_took} to collect all that data. Saving...")
     with open(f"{libr_name}_everything.json", "w") as f:
         f.write(attrs_json)
 
 
 
 if __name__ == "__main__":
-    get_libraries_attrs("tensorflow")    
+    get_libraries_attrs("numpy")    
