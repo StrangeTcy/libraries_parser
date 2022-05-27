@@ -246,6 +246,9 @@ def get_libraries_attrs(libr_name):
     rel_com_dates = get_releases(libr_name, plain_github_url)
     if TIMING:
         write_to_log(timing_log, f"Getting all the releases took {time_to_str(time.time() - releases_start_time)} seconds to process")
+
+    if TIMING:
+        commit_start_time = time.time()
         
 
     attrs_dict = {"language": "Python",
@@ -271,6 +274,9 @@ def get_libraries_attrs(libr_name):
                   "updatedAt": "2016-04-08T15:06:21.595Z",
                   "tags": libr_tags
                   }
+    if TIMING:
+        write_to_log(timing_log, f"Getting all the releases/commits analysed took {time_to_str(time.time() - commit_start_time)} seconds to process")
+    
     attrs_json = json.dumps(attrs_dict, indent=4)
     print (f"Our library has these attributes: {attrs_json}")
     time_it_took = time_to_str(time.time() - start_time)
