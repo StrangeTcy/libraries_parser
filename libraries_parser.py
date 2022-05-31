@@ -115,30 +115,31 @@ def get_releases(libr_name, github_url):
 
     releases_list_final = []
     commits_list_final = []
-    release_dates_filtered = []        
-    for p in range(10):
-        if p == 0 or p == 1:
-            releases_url = f"{github_url}/releases"
-        else:
-            releases_url = f"{github_url}/releases?page={p}"    
-        releases_page = requests.get(releases_url)
-        releases_soup = BeautifulSoup(releases_page.content, "html.parser")
-        releases_text = releases_soup.findAll(text=True)
-        if "There aren’t any releases here" in releases_text:
-            print ("We've run out of pages")
-        else:
-            release_dates = releases_soup.find_all("div", {"class":"mb-2 f4 mr-3 mr-md-0 col-12"})
-            release_dates_filtered_ = [datetime_helper(d) for d in release_dates]
-            print (f"Our release dates are: {release_dates_filtered} of len {len(release_dates_filtered)}")
-            releases_list = releases_soup.find_all("div", {"class":"mr-3 mr-md-0 d-flex"})
-            commits_list = releases_soup.find_all("div", {"class":"mb-md-2 mr-3 mr-md-0"})
-            releases_list_final_ = [r.find("span", {"class":"ml-1 wb-break-all"}).text.strip("\n      ") for r in releases_list]
-            commits_list_final_ = [helper(c) for c in commits_list]
-            commits_list_final_ = list(filter(None, commits_list_final_))
-            print (f"We have releases {releases_list_final} of len {len(releases_list_final)} and commits {commits_list_final} of len {len(commits_list_final)}")
-            release_dates_filtered.extend(release_dates_filtered_)
-            releases_list_final.extend(releases_list_final_)
-            commits_list_final.extend(commits_list_final_)
+    release_dates_filtered = []
+    if not github_url == "Not available":        
+        for p in range(10):
+            if p == 0 or p == 1:
+                releases_url = f"{github_url}/releases"
+            else:
+                releases_url = f"{github_url}/releases?page={p}"    
+            releases_page = requests.get(releases_url)
+            releases_soup = BeautifulSoup(releases_page.content, "html.parser")
+            releases_text = releases_soup.findAll(text=True)
+            if "There aren’t any releases here" in releases_text:
+                print ("We've run out of pages")
+            else:
+                release_dates = releases_soup.find_all("div", {"class":"mb-2 f4 mr-3 mr-md-0 col-12"})
+                release_dates_filtered_ = [datetime_helper(d) for d in release_dates]
+                print (f"Our release dates are: {release_dates_filtered} of len {len(release_dates_filtered)}")
+                releases_list = releases_soup.find_all("div", {"class":"mr-3 mr-md-0 d-flex"})
+                commits_list = releases_soup.find_all("div", {"class":"mb-md-2 mr-3 mr-md-0"})
+                releases_list_final_ = [r.find("span", {"class":"ml-1 wb-break-all"}).text.strip("\n      ") for r in releases_list]
+                commits_list_final_ = [helper(c) for c in commits_list]
+                commits_list_final_ = list(filter(None, commits_list_final_))
+                print (f"We have releases {releases_list_final} of len {len(releases_list_final)} and commits {commits_list_final} of len {len(commits_list_final)}")
+                release_dates_filtered.extend(release_dates_filtered_)
+                releases_list_final.extend(releases_list_final_)
+                commits_list_final.extend(commits_list_final_)
 
     magic_release_commit_dates = (zip(releases_list_final, commits_list_final, release_dates_filtered))
     return magic_release_commit_dates
