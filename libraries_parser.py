@@ -70,7 +70,10 @@ def install(libr_name, version):
 our_magic_function = \
 """
 import pickle
-import {}
+try:
+    import {}
+except:
+    print ("Import probably failed")    
 
 modules_list = []
 
