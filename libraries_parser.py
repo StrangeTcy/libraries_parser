@@ -214,24 +214,40 @@ def get_libraries_attrs(libr_name):
     libr_topics_text = [a.text.strip("\n            ") for a in libr_topics]
     print (f"Found topics {libr_topics_text}")
 
-
-    github_api_url = libr_page_soup.find("div", {"class":"github-repo-info hidden"})['data-url']
-    print (f"Our github url is {github_api_url}")
-    github_data = json.loads(requests.get(github_api_url).text)
-    print (f"Github has returned the following: {github_data}")
-    stars = github_data["stargazers_count"]
-    forks =  github_data["forks_count"]
-    watch = github_data["watchers_count"]
-    print (f"This project has {stars} github stars")
+    pre_github_api_url = libr_page_soup.find("div", {"class":"github-repo-info hidden"})    
+    if pre_github_api_url is not None:   
+        github_api_url =  pre_github_api_url['data-url']
+    else:
+        github_api_url = None  
+    if github_api_url is not None:     
+        print (f"Our github url is {github_api_url}")
+        github_data = json.loads(requests.get(github_api_url).text)
+        print (f"Github has returned the following: {github_data}")
+        stars = github_data["stargazers_count"]
+        forks =  github_data["forks_count"]
+        watch = github_data["watchers_count"]
+        print (f"This project has {stars} github stars")
+        github_topics = github_data["topics"]
+        plain_github_url = github_data['html_url']
+        
+    else:
+        stars = "Not available"
+        forks = "Not available"
+        watch = "Not available"
+        github_topics = "Not available"
+        plain_github_url = "Not available"
+        print ("We couldn't find github data")
+    
     if TIMING:
-        write_to_log(timing_log, f"Parsing repo-related html pages took {time_to_str(time.time() - page_start_time)} seconds to process")
+            write_to_log(timing_log, f"Parsing repo-related html pages took {time_to_str(time.time() - page_start_time)} seconds to process")
+    
     if TIMING:
         bigquery_start_time = time.time()
     weekly_downloads = get_weekly_downloads(libr_name, libr_version)
     if TIMING:
         write_to_log(timing_log, f"Getting weekly downloads took {time.time() - bigquery_start_time} seconds to process")
-    # libr_popularity = "Quite popular"
-    plain_github_url = github_data['html_url']
+    
+    
 
     if TIMING:
         deps_start_time = time.time()
@@ -272,7 +288,7 @@ def get_libraries_attrs(libr_name):
                   "dependents": libr_dependents,
                   "packageKeywords": libr_keywords,
                   "packageTopics": libr_topics_text,
-                  "githubTopics":github_data["topics"],
+                  "githubTopics":github_topics,
                   "description": libr_description,
                   "updatedAt": "2016-04-08T15:06:21.595Z",
                   "tags": libr_tags
@@ -294,6 +310,8 @@ def get_libraries_attrs(libr_name):
 if __name__ == "__main__":
     with open("all_python_libs.pkl","rb") as f:
         all_python_libs = pickle.load(f)
-    for lib in tqdm(all_python_libs[1:]):
-        print (f"Processing library {lib}")
-        get_libraries_attrs(lib)    
+    for _,lib in enumerate(tqdm(all_python_libs[1:])):
+        print (f"Processing library {lib}, {_} out of {len(all_python_libs)}")
+        get_libraries_attrs(lib)
+        with open("lib_number","a+") as ff:
+            ff.write(f"{_} out of {len(all_python_libs)} processed \n")    
