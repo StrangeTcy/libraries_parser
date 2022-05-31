@@ -1,6 +1,9 @@
 import faulthandler
 faulthandler.enable()
 
+
+from tqdm import tqdm
+
 from bs4 import BeautifulSoup
 import urllib.request
 import requests
@@ -283,4 +286,8 @@ def get_libraries_attrs(libr_name):
 
 
 if __name__ == "__main__":
-    get_libraries_attrs("numpy")    
+    with open("all_python_libs.pkl","rb") as f:
+        all_python_libs = pickle.load(f)
+    for lib in tqdm(all_python_libs[1:]):
+        print (f"Processing library {lib}")
+        get_libraries_attrs(lib)    
