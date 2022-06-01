@@ -14,6 +14,8 @@ from collections import OrderedDict
 import pkgutil
 import pickle
 
+from pathlib import Path
+
 import subprocess
 import sys
 
@@ -87,10 +89,17 @@ with open("{}_modules.pkl", "wb") as f:
 
 def get_modules(libr_name, version):
     install(libr_name, version)
-    exec(our_magic_function.format(libr_name, libr_name, libr_name, libr_name))
-    with open(f"{libr_name}_modules.pkl", "rb") as f:
-        our_modules = pickle.load(f)
-    return our_modules
+    try:
+        exec(our_magic_function.format(libr_name, libr_name, libr_name, libr_name))
+    except:
+        print (f"It seems that something went wrong when trying to get our library methods. That's bad...")
+    pickle_filename = f"{libr_name}_modules.pkl"
+    if Path(pickle_filename).exists():
+        with open(pickle_filename, "rb") as f:
+            our_modules = pickle.load(f)
+        return our_modules
+    else:
+        return "No, nothing found. This needs further work..."
 
 
 def get_category(libr_name):
@@ -314,7 +323,7 @@ def get_libraries_attrs(libr_name):
 if __name__ == "__main__":
     with open("all_python_libs.pkl","rb") as f:
         all_python_libs = pickle.load(f)
-    for _,lib in enumerate(tqdm(all_python_libs[1:])):
+    for _,lib in enumerate(tqdm(all_python_libs[2:])):
         print (f"Processing library {lib}, {_} out of {len(all_python_libs)}")
         get_libraries_attrs(lib)
         with open("lib_number","a+") as ff:
