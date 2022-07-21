@@ -28,6 +28,10 @@ from google.cloud import bigquery
 
 TIMING = True
 
+#only analyse the latest versions of a library
+#saves time, but the analysis wouldn't be as deep
+LVO = True
+
 
 # Note: depending on where this code is being run, you may require
 # additional authentication. See:
@@ -153,7 +157,18 @@ def get_releases(libr_name, github_url):
                 releases_list_final.extend(releases_list_final_)
                 commits_list_final.extend(commits_list_final_)
 
-    magic_release_commit_dates = (zip(releases_list_final, commits_list_final, release_dates_filtered))
+    if LVO:
+        # print (f"Our releases list is: {releases_list_final} of len {len(releases_list_final)}")
+        if len(releases_list_final) > 0:
+            releases_list_final = releases_list_final[0]
+            commits_list_final = commits_list_final[0]
+            release_dates_filtered = release_dates_filtered[0]
+        else:
+            releases_list_final = "Not available"
+            commits_list_final = "Not available"
+            release_dates_filtered = "Not available"    
+
+    magic_release_commit_dates = list(zip(releases_list_final, commits_list_final, release_dates_filtered))
     return magic_release_commit_dates
 
 
@@ -178,16 +193,26 @@ def  get_dependents(libr_name):
 
 def form_releases(commit_list, libr_name):
     versions__list = []
-    for c in commit_list:
-        
+    if ("N","N","N") not in commit_list:
+        for c in commit_list:
+                    
+            version_dict = \
+            {
+            "version": c[0],
+            "commit":c[1],
+            "date":c[2],
+            "methods": get_modules(libr_name, c[0])
+            }
+            versions__list.append(version_dict)
+    else:
         version_dict = \
         {
-        "version": c[0],
-        "commit":c[1],
-        "date":c[2],
-        "methods": get_modules(libr_name, c[0])
-        }
-        versions__list.append(version_dict)
+        "version": "Not available",
+        "commit":"Not available",
+        "date":"Not available",
+        "methods": "Not available"
+        }      
+        versions__list.append(version_dict)  
     return versions__list    
     
 
@@ -203,6 +228,9 @@ def get_libraries_attrs(libr_name):
 
 
     timing_log = f"{libr_name}_timing.log"
+    if LVO:
+        write_to_log(timing_log, "We're only processing the latest version of this library for now. Expect faster processing and smaller & less exact results.")
+
     if TIMING:
         start_time = time.time()
 
@@ -236,13 +264,21 @@ def get_libraries_attrs(libr_name):
         print (f"Our github url is {github_api_url}")
         github_data = json.loads(requests.get(github_api_url).text)
         print (f"Github has returned the following: {github_data}")
-        stars = github_data["stargazers_count"]
-        forks =  github_data["forks_count"]
-        watch = github_data["watchers_count"]
-        print (f"This project has {stars} github stars")
-        github_topics = github_data["topics"]
-        plain_github_url = github_data['html_url']
-        
+        if not github_data['message'] == "Not Found":
+            stars = github_data["stargazers_count"]
+            forks =  github_data["forks_count"]
+            watch = github_data["watchers_count"]
+            print (f"This project has {stars} github stars")
+            github_topics = github_data["topics"]
+            plain_github_url = github_data['html_url']
+        else:
+            stars = "Not available"
+            forks = "Not available"
+            watch = "Not available"
+            github_topics = "Not available"
+            plain_github_url = "Not available"
+            print ("Github data insufficient. Probably this library isn't widely used")
+            
     else:
         stars = "Not available"
         forks = "Not available"
@@ -321,10 +357,20 @@ def get_libraries_attrs(libr_name):
 
 
 if __name__ == "__main__":
+    lib_number_filename = "lib_number"
+    if Path(lib_number_filename).exists():
+        with open(lib_number_filename,"r") as ff:
+            lib_number = ff.readlines()
+        # get the last line, parse the bt before the "out of" and cast it to int,
+        # getting the number of the library we want to continue from    
+        lib_number = int(str(lib_number[-1:][0]).split(" out of")[0])
+    else:
+        lib_number = 0        
+        
     with open("all_python_libs.pkl","rb") as f:
         all_python_libs = pickle.load(f)
-    for _,lib in enumerate(tqdm(all_python_libs[2:])):
-        print (f"Processing library {lib}, {_} out of {len(all_python_libs)}")
+    for _,lib in enumerate(tqdm(all_python_libs[lib_number:])):
+        print (f"Processing library {lib}, {lib_number+_} out of {len(all_python_libs)}")
         get_libraries_attrs(lib)
-        with open("lib_number","a+") as ff:
-            ff.write(f"{_} out of {len(all_python_libs)} processed \n")    
+        with open(lib_number_filename,"a+") as ff:
+            ff.write(f"{lib_number+_} out of {len(all_python_libs)} processed \n")    
