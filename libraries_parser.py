@@ -1,7 +1,7 @@
 import faulthandler
 faulthandler.enable()
 
-
+# pretty progressbars
 from tqdm import tqdm
 
 from bs4 import BeautifulSoup
